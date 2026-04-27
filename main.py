@@ -8,7 +8,7 @@ app = FastAPI(title="Sistema Los Coyotes")
 #Configuracion CORS (permisos)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://frontend-coyotes.onrender.com", "http://localhost:5173"], #Ruta del front
+    allow_origins=["https://frontend-coyotes.onrender.com"], #Ruta del front
     allow_credentials=True,
     allow_methods=["*"], # Le permite usar GET, POST, PUT, PATCH y DELETE
     allow_headers=["*"], # Le permite enviar cualquier tipo de dato
