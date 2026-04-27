@@ -8,7 +8,7 @@ app = FastAPI(title="Sistema Los Coyotes")
 #Configuracion CORS (permisos)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"], #Ruta del front
+    allow_origins=["https://frontend-coyotes.onrender.com", "http://localhost:5173"], #Ruta del front
     allow_credentials=True,
     allow_methods=["*"], # Le permite usar GET, POST, PUT, PATCH y DELETE
     allow_headers=["*"], # Le permite enviar cualquier tipo de dato
@@ -62,6 +62,14 @@ class ActualizarDatos(BaseModel):
     color: str
     precio: float
     stock: int
+
+
+@app.get("/")
+def root():
+    return {
+        "estado": "Operativo",
+        "mensaje": "El servidor está funcionando correctamente."
+    }
 
 
 #Conexion a la base de datos
@@ -146,7 +154,7 @@ def listar_zapatos():
         cursor = conexion.cursor()
 
         #Unimos las tablas y fisltramos los activos y en stock
-        sql = "SELECT v.id AS codigo, m.nombre, m.categoria, m.marca, v.talla, v.color, v.precio, v.stock FROM zapatos_variante v JOIN zapatos_modelo m ON v.modelo_id = m.id WHERE v.stock > 0 AND v.is_active = TRUE"
+        sql = "SELECT v.id AS codigo, m.nombre, m.categoria, m.marca, v.talla, v.color, v.precio, v.stock FROM zapatos_variante v JOIN zapatos_modelo m ON v.modelo_id = m.id WHERE v.is_active = TRUE"
 
         cursor.execute(sql)
         zapatos_encontrados = cursor.fetchall()
@@ -171,7 +179,7 @@ def listar_zapatos_archivados():
         cursor = conexion.cursor()
 
         # Aquí buscamos específicamente los que están "ocultos"
-        sql = "SELECT v.id AS codigo, m.nombre, m.marca, v.talla, v.color, v.precio, v.stock FROM zapatos_variante v JOIN zapatos_modelo m ON v.modelo_id = m.id WHERE v.is_active = FALSE"
+        sql = "SELECT v.id AS codigo, m.nombre, m.categoria, m.marca, v.talla, v.color, v.precio, v.stock FROM zapatos_variante v JOIN zapatos_modelo m ON v.modelo_id = m.id WHERE v.is_active = FALSE"
 
         cursor.execute(sql)
         archivados = cursor.fetchall()
@@ -278,6 +286,36 @@ def reactivar_zapato(id_variante: int):
     finally:
         conexion.close()
 
+@app.put("/zapatos/vender/{id_variante}")
+def registrar_venta(id_variante: int):
+    try:
+        conexion = obtener_conexion()
+        cursor = conexion.cursor()
+
+        sql_venta = "UPDATE zapatos_variante SET stock = stock - 1 WHERE id = %s AND stock > 0"
+        cursor.execute(sql_venta, (id_variante,))
+        
+        if cursor.rowcount == 0:
+            return {"estado": "Error", "mensaje": "No hay stock suficiente para realizar la venta."}
+        
+        #sql_verificar = "SELECT stock FROM zapatos_variante WHERE id = %s"
+        #cursor.execute(sql_verificar, (id_variante,))
+        #resultado = cursor.fetchone()
+
+        #if resultado and resultado['stock'] == 0:
+        #    cursor.execute("UPDATE zapatos_variante SET is_active = FALSE WHERE id = %s", (id_variante,))
+        #    mensaje = "¡Venta registrada! El producto se ha descontinuado automáticamente por falta de stock."
+        #else:
+        #    mensaje = "¡Venta registrada con éxito!"
+
+        conexion.commit()
+        return {"estado": "Éxito", "mensaje": "Venta realizada exitosamente"}
+
+    except Exception as e:
+        return {"estado": "Error", "mensaje": f"Error al registrar venta: {str(e)}"}
+    finally:
+        if 'conexion' in locals(): 
+            conexion.close()
 
 @app.delete("/zapatos/eliminar/{id_variante}/permanente")
 def eliminar_zapato(id_variante: int):
